@@ -6,7 +6,8 @@ import pandas as pd
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import OneHotEncoder,StandardScaler
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.model_selection import train_test_split
 
 from src.exception import CustomException
 from src.logger import logging
@@ -16,70 +17,61 @@ from src.utils import save_object
 
 @dataclass
 class DataTransformationConfig:
-    preprocessor_obj_file_path=os.path.join('artifacts',"proprocessor.pkl")
+    preprocessor_obj_file_path = os.path.join('artifacts', "proprocessor.pkl")
 
 class DataTransformation:
     def __init__(self):
-        self.data_transformation_config=DataTransformationConfig()
+        self.data_transformation_config = DataTransformationConfig()
 
     def get_data_transformer_object(self):
         '''
-        This function is responsible for data trnasformation
+        This function is responsible for data transformation
         
         '''
         try:
             numerical_columns = ["total_sqft", "bhk"]
-            categorical_columns = [
-                "location",
-            ]
+            categorical_columns = ["location"]
 
-            num_pipeline= Pipeline(
+            num_pipeline = Pipeline(
                 steps=[
-                ("imputer",SimpleImputer(strategy="median")),
-                ("scaler",StandardScaler())
-
+                    ("imputer", SimpleImputer(strategy="median")),
+                    ("scaler", StandardScaler())
                 ]
             )
 
-            cat_pipeline=Pipeline(
-
+            cat_pipeline = Pipeline(
                 steps=[
-                ("imputer",SimpleImputer(strategy="most_frequent")),
-                ("one_hot_encoder",OneHotEncoder()),
-                ("scaler",StandardScaler(with_mean=False))
+                    ("imputer", SimpleImputer(strategy="most_frequent")),
+                    ("one_hot_encoder", OneHotEncoder()),
                 ]
-
             )
 
             logging.info(f"Categorical columns: {categorical_columns}")
             logging.info(f"Numerical columns: {numerical_columns}")
 
-            preprocessor=ColumnTransformer(
+            preprocessor = ColumnTransformer(
                 [
-                ("num_pipeline",num_pipeline,numerical_columns),
-                ("cat_pipelines",cat_pipeline,categorical_columns)
-
+                    ("num_pipeline", num_pipeline, numerical_columns),
+                    ("cat_pipelines", cat_pipeline, categorical_columns)
                 ]
-
-
             )
 
             return preprocessor
         
         except Exception as e:
-            raise CustomException(e,sys)
+            raise CustomException(e, sys)
         
-    def initiate_data_transformation(self,train_path,test_path):
+    def initiate_data_transformation(self,raw_data_path):
 
         try:
-            train_df=pd.read_csv(train_path)
-            test_df=pd.read_csv(test_path)
-            train_df=train_df.dropna()
-            test_df=test_df.dropna()
-            train_df['bhk']=train_df['size'].astype(str).apply(lambda x: x.split(' ')[0])
-            test_df['bhk']=test_df['size'].astype(str).apply(lambda x: x.split(' ')[0])
-            train_df=train_df.drop(['size'],axis=1)
-            test_df=test_df.drop(['size'],axis=1)
+            data=pd.read_csv(raw_data_path)
+            
+            # Combine train and test datasets for preprocessing
+            #combined_df = pd.concat([train_df, test_df], ignore_index=True)
+            combined_df=data.copy()
+            combined_df = combined_df.dropna()
+            combined_df['bhk'] = combined_df['size'].astype(str).apply(lambda x: x.split(' ')[0])
+            combined_df = combined_df.drop(['size'], axis=1)
 
             def numbers(x):
                 a = x.split('-')
@@ -89,39 +81,21 @@ class DataTransformation:
                     return float(a[0])
                 except:
                     return None
-                
-            train_df["total_sqft"] = train_df["total_sqft"].apply(numbers)
-            test_df["total_sqft"] = test_df["total_sqft"].apply(numbers)
-            train_df.dropna(inplace=True)
-            test_df.dropna(inplace=True)
-            train_df['bhk']=train_df['bhk'].apply(lambda x: int(x))
-            test_df['bhk']=test_df['bhk'].apply(lambda x: int(x))
 
-            train_df['location']=train_df['location'].apply(lambda x: x.strip())
-            test_df['location']=test_df['location'].apply(lambda x: x.strip())
+            combined_df["total_sqft"] = combined_df["total_sqft"].apply(numbers)
+            combined_df.dropna(inplace=True)
+            combined_df['bhk'] = combined_df['bhk'].apply(lambda x: int(x))
+            combined_df['location'] = combined_df['location'].apply(lambda x: x.strip())
 
-            a=train_df.groupby('location')['location'].agg('count').sort_values(ascending=False)
-            others=a[a<10]
-            train_df['location']=train_df['location'].apply(lambda x: "others" if x in others else x)
+            a = combined_df.groupby('location')['location'].agg('count').sort_values(ascending=False)
+            others = a[a < 10]
+            combined_df['location'] = combined_df['location'].apply(lambda x: "others" if x in others else x)
 
-            b=test_df.groupby('location')['location'].agg('count').sort_values(ascending=False)
-            others=b[b<10]
-            test_df['location']=test_df['location'].apply(lambda x: "others" if x in others else x)
+            combined_df['price_sqft'] = combined_df['price']*100000/combined_df['total_sqft']
 
-            train_df['price_sqft']=train_df['price']*100000/train_df['total_sqft']
-            test_df['price_sqft']=test_df['price']*100000/test_df['total_sqft']
-
-            train_df=train_df[train_df['price']<500]
-            test_df=test_df[test_df['price']<500]
-
-            train_df=train_df[train_df['total_sqft']<5100]
-            test_df=test_df[test_df['total_sqft']<5100]
-            
-            train_df['bhk']
-
-            train_df = train_df[train_df['bath']<train_df['bhk']+2]
-            test_df=test_df[test_df['bath']<test_df['bhk']+2]
-            
+            combined_df = combined_df[combined_df['price'] < 500]
+            combined_df = combined_df[combined_df['total_sqft'] < 5100]
+            combined_df = combined_df[combined_df['bath'] < combined_df['bhk'] + 2]
 
             def remove_pps_outliers(df):
                 df_out = pd.DataFrame()
@@ -131,57 +105,56 @@ class DataTransformation:
                     reduced_df = subdf[(subdf.price_sqft>(m-st)) & (subdf.price_sqft<=(m+st))]
                     df_out = pd.concat([df_out,reduced_df],ignore_index=True)
                 return df_out
-            train_df = remove_pps_outliers(train_df)
-            test_df = remove_pps_outliers(test_df)
+            cleaned_df=remove_pps_outliers(combined_df)
 
-
-            train_df.dropna(inplace=True)
-            test_df.dropna(inplace=True)
-
+            target_column_name="price"
+            #train_data,test_data=train_test_split(cleaned_df,test_size=0.2,random_state=42)
+            x=cleaned_df.drop(columns=[target_column_name,"bath","area_type","availability","society","balcony","price_sqft"],axis=1)
+            y=cleaned_df[target_column_name]
+            x_train,x_test,y_train,y_test=train_test_split(x,y,test_size=0.2,random_state=42)
 
             logging.info("Read train and test data completed")
 
             logging.info("Obtaining preprocessing object")
 
-            preprocessing_obj=self.get_data_transformer_object()
+            preprocessing_obj = self.get_data_transformer_object()
 
-            target_column_name="price"
-            numerical_columns = ["total_sqft","bhk"]
+            #target_column_name="price"
 
-            input_feature_train_df=train_df.drop(columns=[target_column_name,"bath","area_type","availability","society","balcony","price_sqft"],axis=1)
-            target_feature_train_df=train_df[target_column_name]
+            #input_feature_train_df=train_data.drop(columns=[target_column_name,"bath","area_type","availability","society","balcony","price_sqft"],axis=1)
+            #y_train=train_data[target_column_name]
 
-            input_feature_test_df=test_df.drop(columns=[target_column_name,"bath","area_type","availability","society","balcony","price_sqft"],axis=1)
-            target_feature_test_df=test_df[target_column_name]
+            #input_feature_test_df=test_data.drop(columns=[target_column_name,"bath","area_type","availability","society","balcony","price_sqft"],axis=1)
+            #y_test=test_data[target_column_name]
 
-            logging.info(
-                f"Applying preprocessing object on training dataframe and testing dataframe."
-            )
+            logging.info("Applying preprocessing object on the dataset.")
 
-            input_feature_train_df[target_column_name]=target_feature_train_df
-            input_feature_test_df[target_column_name]=target_feature_test_df
+        
 
-            train_arr=preprocessing_obj.fit_transform(input_feature_train_df)
-            test_arr=preprocessing_obj.transform(input_feature_test_df)
-
-
-            #train_arr = np.c_[input_feature_train_arr,target_feature_train_df]
-            #test_arr = np.c_[input_feature_test_arr,target_feature_test_df]
+            x_train=preprocessing_obj.fit_transform(x_train)
+            x_test=preprocessing_obj.transform(x_test)
             
 
-            logging.info(f"Saved preprocessing object.")
+
+            print(x_train.shape)
+            print(x_test.shape)
+            print(y_train.shape)
+            print(y_test.shape)
+
+            logging.info("Saved preprocessing object.")
 
             save_object(
-
                 file_path=self.data_transformation_config.preprocessor_obj_file_path,
                 obj=preprocessing_obj
-
             )
 
             return (
-                train_arr,
-                test_arr,
+                x_train,
+                x_test,
+                y_train,
+                y_test,
                 self.data_transformation_config.preprocessor_obj_file_path,
             )
+        
         except Exception as e:
-            raise CustomException(e,sys)
+            raise CustomException(e, sys)
