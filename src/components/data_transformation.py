@@ -107,11 +107,15 @@ class DataTransformation:
                 return df_out
             cleaned_df=remove_pps_outliers(combined_df)
 
+
             target_column_name="price"
             #train_data,test_data=train_test_split(cleaned_df,test_size=0.2,random_state=42)
             x=cleaned_df.drop(columns=[target_column_name,"bath","area_type","availability","society","balcony","price_sqft"],axis=1)
             y=cleaned_df[target_column_name]
+            x=x[['total_sqft','bhk','location']]
             x_train,x_test,y_train,y_test=train_test_split(x,y,test_size=0.2,random_state=42)
+            print(x_train.columns)
+            print(x_test.columns)
 
             logging.info("Read train and test data completed")
 
@@ -133,13 +137,10 @@ class DataTransformation:
 
             x_train=preprocessing_obj.fit_transform(x_train)
             x_test=preprocessing_obj.transform(x_test)
+            print(x_train.shape)
+            
             
 
-
-            print(x_train.shape)
-            print(x_test.shape)
-            print(y_train.shape)
-            print(y_test.shape)
 
             logging.info("Saved preprocessing object.")
 

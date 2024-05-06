@@ -31,21 +31,27 @@ class Modeltrainer():
         try:
             logging.info("Split training and test input data")
             models = {
-                "Random Forest": RandomForestRegressor(),
-                "Decision Tree": DecisionTreeRegressor(),
-                "Gradient Boosting": GradientBoostingRegressor(),
-                "Linear Regression": LinearRegression(),
+                #"Random Forest": RandomForestRegressor(),
+                #"Decision Tree": DecisionTreeRegressor(),
+                #"Gradient Boosting": GradientBoostingRegressor(),
+                #"Linear Regression": LinearRegression(),
                 "XGBRegressor": XGBRegressor(),
-                "CatBoosting Regressor": CatBoostRegressor(verbose=False),
-                "AdaBoost Regressor": AdaBoostRegressor(),
+               #"CatBoosting Regressor": CatBoostRegressor(verbose=False),
+               # "AdaBoost Regressor": AdaBoostRegressor(),
             }
 
-            print("model_trainer")
+            params={
+                "XGBRegressor":{
+                    'learning_rate':[0.1,0.01,0.05,0.001,0.3],
+                    
+                },
+                
+            }
 
 
 
 
-            model_report:dict=evaluate_models(X_train=x_train,y_train=y_train,X_test=x_test,y_test=y_test,models=models)
+            model_report:dict=evaluate_models(X_train=x_train,y_train=y_train,X_test=x_test,y_test=y_test,models=models,params=params)
             
                 ## To get best model score from dict
             best_model_score = max(sorted(model_report.values()))
@@ -69,7 +75,7 @@ class Modeltrainer():
             predicted=best_model.predict(x_test)
                 
             r2_square = r2_score(y_test, predicted)
-            return r2_square
+            return r2_square,best_model_name
             
         except Exception as e:
              raise CustomException(e,sys)
