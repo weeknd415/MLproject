@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href=".\CSS.css">
+    <script src="js.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+</head>
+<body>
+    <div id="main_box">
+        <div id="first_line" class="input-line">
+            <div class="input-group">
+                <label for="square_feet">Square Feet:</label>
+                <input type="text" id="square_feet" placeholder="Enter a Number"> 
+            </div>
+            <div class="input-group">
+                <label for="location">Location:</label>
+                <select id="location"></select>
+            </div>
+        </div>
+        <div id="second_line" class="input-line">
+            <div class="input-group">
+                <label>Choose BHK:</label>
+                <label><input type="radio" name="bhk" value="1"> 1</label>
+                <label><input type="radio" name="bhk" value="2"> 2</label>
+                <label><input type="radio" name="bhk" value="3"> 3</label>
+                <label><input type="radio" name="bhk" value="4"> 4</label>
+                <label><input type="radio" name="bhk" value="5"> 5</label>
+            </div>
+        </div>
+        <div id="third_line">
+            <button id="button_predict" onclick="pred()">Estimate Price </button>
+        </div>
+    </div>
+    <div>
+        <p id="pred"></p>
+    </div>
+</body>
+</html>
